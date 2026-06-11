@@ -1,11 +1,22 @@
 ---
-title: Fluxa Voice Ai Backend
-emoji: 🐨
+title: Fluxa Voice AI Backend
+emoji: 🎙️
 colorFrom: blue
-colorTo: red
+colorTo: green
 sdk: docker
 pinned: false
-license: mit
 ---
 
-Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference
+# Fluxa Voice AI Backend
+
+FastAPI backend for Fluxa voice transaction parsing.
+
+## Endpoints
+
+- `GET /health`
+- `POST /api/v1/voice/parse-text`
+- `POST /api/v1/voice/parse`
+
+## Pipeline
+
+Audio → faster-whisper → text normalization → transaction classifier → amount parser → transaction JSON.

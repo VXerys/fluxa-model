@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+pandas
+numpy
+scikit-learn
+joblib
+faster-whisper
+ctranslate2
