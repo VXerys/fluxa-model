@@ -6,7 +6,9 @@ text
 -> category classifier
 -> transaction type resolver
 -> amount parser
+-> title extractor
 -> transaction JSON draft
+-> Groq fallback (optional, when local result is uncertain)
 
 The resolver is important because some category labels imply a fixed transaction type:
 - Gaji, Freelance -> income
@@ -21,6 +23,8 @@ from typing import Any, Optional
 
 from src.amount_parser import parse_amount
 from src.text_normalizer import normalize_text
+from src.title_extractor import extract_title
+from app.services.groq_fallback_service import groq_fallback_service
 
 
 INCOME_CATEGORIES = {"Gaji", "Freelance"}
@@ -75,6 +79,7 @@ class TransactionDraft:
     amount: Optional[int]
     category: str
     wallet: Optional[str]
+    title: Optional[str]
     description: Optional[str]
     currency: str = "IDR"
 
@@ -165,6 +170,9 @@ def infer_transaction(
 
     pred_amount = parse_amount(text)
 
+    # --- Title extraction (local, rule-based) ---
+    local_title = extract_title(normalized)
+
     warnings: list[str] = []
 
     if category_warning is not None:
@@ -186,7 +194,8 @@ def infer_transaction(
         amount=pred_amount,
         category=pred_category,
         wallet=pred_wallet,
-        description=None,
+        title=local_title if local_title else None,
+        description=local_title if local_title else None,
         currency="IDR",
     )
 
@@ -196,7 +205,7 @@ def infer_transaction(
         category=pred_category,
     )
 
-    return {
+    local_result = {
         "transcript": {
             "raw": text,
             "normalized": normalized,
@@ -207,3 +216,8 @@ def infer_transaction(
         "classification": asdict(classification),
         "warnings": warnings,
     }
+
+    # --- Groq fallback (optional post-processor) ---
+    result = groq_fallback_service.maybe_apply(local_result)
+
+    return result

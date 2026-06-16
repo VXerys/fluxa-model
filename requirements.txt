@@ -8,3 +8,4 @@ scikit-learn
 joblib
 faster-whisper
 ctranslate2
+httpx

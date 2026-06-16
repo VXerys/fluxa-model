@@ -21,6 +21,7 @@ class TransactionResponse(BaseModel):
     amount: Optional[int]
     category: str
     wallet: Optional[str] = None
+    title: Optional[str] = None
     description: Optional[str] = None
     currency: str = "IDR"
 
