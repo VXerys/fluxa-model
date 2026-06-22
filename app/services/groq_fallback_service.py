@@ -30,17 +30,56 @@ logger = logging.getLogger(__name__)
 # Allowed values (validation)
 # ────────────────────────────────────────────────────────────────────────────
 
-ALLOWED_CATEGORIES: set[str] = {
-    "Makan & Minum",
-    "Transportasi",
-    "Belanja",
-    "Tagihan & Utilitas",
-    "Hiburan",
-    "Kesehatan",
-    "Gaji",
-    "Freelance",
-    "Transfer",
+CATEGORIES_TAXONOMY: dict[str, list[str]] = {
+    "Makan & Minum": [
+        "Sarapan", "Makan Siang", "Makan Malam", "Kopi", "Camilan", "Restoran", "Bahan Makanan"
+    ],
+    "Transportasi": [
+        "Bus", "Kereta", "Taksi", "Bensin", "Parkir", "Ojek Online", "Servis Kendaraan"
+    ],
+    "Belanja": [
+        "Pakaian", "Sepatu", "Aksesori", "Elektronik", "Marketplace", "Perawatan Diri"
+    ],
+    "Rumah": [
+        "Sewa", "Listrik", "Air", "Internet", "Furnitur", "Kebersihan", "Perbaikan Rumah"
+    ],
+    "Hiburan": [
+        "Film", "Musik", "Game", "Konser", "Streaming", "Liburan", "Hobi"
+    ],
+    "Kesehatan": [
+        "Dokter", "Obat", "Rumah Sakit", "Asuransi", "Gym", "Vitamin"
+    ],
+    "Pendidikan": [
+        "Kursus", "Buku", "Uang Sekolah", "Seminar", "Sertifikasi", "Alat Tulis"
+    ],
+    "Tagihan": [
+        "Pulsa", "Paket Data", "Langganan", "Kartu Kredit", "Cicilan", "Pajak"
+    ],
+    "Gaji": [
+        "Gaji Bulanan", "Tunjangan", "Lembur", "Bonus Gaji"
+    ],
+    "Freelance": [
+        "Project", "Design", "Development", "Writing", "Konsultasi"
+    ],
+    "Bisnis": [
+        "Penjualan Produk", "Penjualan Jasa", "Keuntungan", "Komisi"
+    ],
+    "Investasi": [
+        "Dividen", "Bunga", "Capital Gain", "Crypto", "Saham"
+    ],
+    "Hadiah": [
+        "Keluarga", "Teman", "Reward", "Hadiah Lomba"
+    ],
+    "Pengembalian": [
+        "Cashback", "Refund", "Reimbursement", "Utang Dibayar"
+    ],
+    "Lainnya": [
+        "Hadiah Keluar", "Donasi", "Biaya Admin", "Tak Terduga", "Pengeluaran Lainnya", "Pemasukan Lainnya"
+    ],
+    "Transfer": []
 }
+
+ALLOWED_CATEGORIES: set[str] = set(CATEGORIES_TAXONOMY.keys())
 
 ALLOWED_TYPES: set[str] = {"expense", "income", "transfer"}
 
@@ -187,6 +226,43 @@ Contoh konversi:
 - "nampi gajih" → title: "Gaji", description: "Terima gaji"
 - "meuli obat ti apotek" → title: "Obat", description: "Beli obat dari apotek"
 
+### Kategori & Subkategori (Sangat Penting):
+Kamu harus memilih kategori utama (category) dan subkategori (subcategory) yang paling sesuai dari daftar di bawah ini. Jangan membuat kategori atau subkategori di luar daftar ini!
+
+Daftar Kategori Utama & Subkategori yang Diizinkan:
+1. Makan & Minum
+   Subkategori: Sarapan, Makan Siang, Makan Malam, Kopi, Camilan, Restoran, Bahan Makanan
+2. Transportasi
+   Subkategori: Bus, Kereta, Taksi, Bensin, Parkir, Ojek Online, Servis Kendaraan
+3. Belanja
+   Subkategori: Pakaian, Sepatu, Aksesori, Elektronik, Marketplace, Perawatan Diri
+4. Rumah
+   Subkategori: Sewa, Listrik, Air, Internet, Furnitur, Kebersihan, Perbaikan Rumah
+5. Hiburan
+   Subkategori: Film, Musik, Game, Concert (Konser), Streaming, Liburan, Hobi
+6. Kesehatan
+   Subkategori: Dokter, Obat, Rumah Sakit, Asuransi, Gym, Vitamin
+7. Pendidikan
+   Subkategori: Kursus, Buku, Uang Sekolah, Seminar, Sertifikasi, Alat Tulis
+8. Tagihan
+   Subkategori: Pulsa, Paket Data, Langganan, Kartu Kredit, Cicilan, Pajak
+9. Gaji
+   Subkategori: Gaji Bulanan, Tunjangan, Lembur, Bonus Gaji
+10. Freelance
+    Subkategori: Project, Design, Development, Writing, Konsultasi
+11. Bisnis
+    Subkategori: Penjualan Produk, Penjualan Jasa, Keuntungan, Komisi
+12. Investasi
+    Subkategori: Dividen, Bunga, Capital Gain, Crypto, Saham
+13. Hadiah
+    Subkategori: Keluarga, Teman, Reward, Hadiah Lomba
+14. Pengembalian
+    Subkategori: Cashback, Refund, Reimbursement, Utang Dibayar
+15. Lainnya
+    Subkategori: Hadiah Keluar, Donasi, Biaya Admin, Tak Terduga, Pengeluaran Lainnya, Pemasukan Lainnya
+16. Transfer
+    Subkategori: (Tidak ada subkategori, gunakan null)
+
 ### Tugasmu:
 1. Perbaiki **title** agar berisi nama item/tujuan transaksi yang bersih \
    dalam Bahasa Indonesia, tanpa angka nominal, tanpa nama wallet, tanpa \
@@ -195,14 +271,13 @@ Contoh konversi:
    Bahasa Indonesia yang menjelaskan transaksi secara natural. \
    SELALU berikan description yang bermakna, jangan pernah kirim null \
    untuk description.
-3. Perbaiki **category** jika tidak sesuai konteks. Kategori yang diizinkan: \
-   Makan & Minum, Transportasi, Belanja, Tagihan & Utilitas, Hiburan, \
-   Kesehatan, Gaji, Freelance, Transfer.
-4. Perbaiki **type** jika tidak konsisten. Tipe yang diizinkan: \
+3. Perbaiki **category** jika tidak sesuai konteks. Gunakan salah satu dari 16 kategori utama di atas.
+4. Tentukan **subcategory** yang paling sesuai dari subkategori yang diperbolehkan untuk kategori utama tersebut. Jika tidak ada subkategori yang cocok, gunakan null.
+5. Perbaiki **type** jika tidak konsisten. Tipe yang diizinkan: \
    expense, income, transfer.
-5. Perbaiki **wallet** jika terdeteksi di transkrip. Wallet yang diizinkan: \
+6. Perbaiki **wallet** jika terdeteksi di transkrip. Wallet yang diizinkan: \
    BCA, BRI, BNI, Mandiri, DANA, GoPay, OVO, ShopeePay, Cash.
-6. Perbaiki **date** jika ada ekspresi tanggal relatif. Gunakan format \
+7. Perbaiki **date** jika ada ekspresi tanggal relatif. Gunakan format \
    YYYY-MM-DD. Referensi: hari ini = {today_date}.
 
 Aturan penting:
@@ -217,13 +292,12 @@ Format respons (JSON saja):
   "title": "string atau null",
   "description": "string (WAJIB, jangan null)",
   "type": "expense|income|transfer atau null",
-  "category": "kategori yang diizinkan atau null",
+  "category": "kategori utama yang diizinkan atau null",
+  "subcategory": "subkategori yang diizinkan untuk kategori tersebut atau null",
   "wallet": "wallet yang diizinkan atau null",
   "date": "YYYY-MM-DD atau null",
   "reason": "alasan singkat koreksi"
-}}\
-"""
-
+}}"""
 
 def _build_system_prompt() -> str:
     """Build the system prompt with today's date injected."""
@@ -268,7 +342,20 @@ def _validate_wallet(value: str | None) -> str | None:
 def _validate_category(value: str | None) -> str | None:
     if value is None:
         return None
+    if value == "Tagihan & Utilitas":
+        return "Tagihan"
     return value if value in ALLOWED_CATEGORIES else None
+
+
+def _validate_subcategory(category: str | None, subcategory: str | None) -> str | None:
+    if not category or not subcategory:
+        return None
+    allowed_subs = CATEGORIES_TAXONOMY.get(category, [])
+    sub_clean = subcategory.strip().lower()
+    for allowed in allowed_subs:
+        if allowed.lower() == sub_clean:
+            return allowed
+    return None
 
 
 def _validate_type(value: str | None) -> str | None:
@@ -466,6 +553,13 @@ class GroqFallbackService:
         if groq_category and groq_category != tx.get("category"):
             tx["category"] = groq_category
             result["classification"]["category"] = groq_category
+            applied = True
+
+        # Subcategory
+        final_category = groq_category or tx.get("category")
+        groq_subcategory = _validate_subcategory(final_category, groq_response.get("subcategory"))
+        if groq_subcategory and groq_subcategory != tx.get("subcategory"):
+            tx["subcategory"] = groq_subcategory
             applied = True
 
         # Type

@@ -84,6 +84,7 @@ class TransactionDraft:
     description: Optional[str]
     currency: str = "IDR"
     date: Optional[str] = None
+    subcategory: Optional[str] = None
 
 
 @dataclass
@@ -203,6 +204,7 @@ def infer_transaction(
         description=local_title if local_title else None,
         currency="IDR",
         date=parsed_date,
+        subcategory=None,
     )
 
     classification = ClassificationResult(
