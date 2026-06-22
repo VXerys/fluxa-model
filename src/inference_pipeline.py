@@ -165,11 +165,12 @@ def infer_transaction(
     )
     resolved_type = resolve_transaction_type(raw_pred_type, pred_category)
 
-    pred_wallet: Optional[str] = None
-    if wallet_model is not None:
-        wallet_prediction = wallet_model.predict([text])[0]
-        if wallet_prediction is not None and str(wallet_prediction).lower() not in {"none", "null", "nan"}:
-            pred_wallet = str(wallet_prediction)
+    pred_wallet: Optional[str] = "Cash"
+    # Bypassed other wallet options for now
+    # if wallet_model is not None:
+    #     wallet_prediction = wallet_model.predict([text])[0]
+    #     if wallet_prediction is not None and str(wallet_prediction).lower() not in {"none", "null", "nan"}:
+    #         pred_wallet = str(wallet_prediction)
 
     pred_amount = parse_amount(text)
 

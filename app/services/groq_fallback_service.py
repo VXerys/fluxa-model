@@ -84,16 +84,16 @@ ALLOWED_CATEGORIES: set[str] = set(CATEGORIES_TAXONOMY.keys())
 ALLOWED_TYPES: set[str] = {"expense", "income", "transfer"}
 
 ALLOWED_WALLETS: dict[str, str] = {
-    "bca": "BCA",
-    "bri": "BRI",
-    "bni": "BNI",
-    "mandiri": "Mandiri",
-    "dana": "DANA",
-    "gopay": "GoPay",
-    "go pay": "GoPay",
-    "ovo": "OVO",
-    "shopeepay": "ShopeePay",
-    "shopee pay": "ShopeePay",
+    # "bca": "BCA",
+    # "bri": "BRI",
+    # "bni": "BNI",
+    # "mandiri": "Mandiri",
+    # "dana": "DANA",
+    # "gopay": "GoPay",
+    # "go pay": "GoPay",
+    # "ovo": "OVO",
+    # "shopeepay": "ShopeePay",
+    # "shopee pay": "ShopeePay",
     "cash": "Cash",
     "tunai": "Cash",
 }
@@ -110,9 +110,7 @@ _AMOUNT_NOISE_PATTERN = re.compile(
 )
 
 _WALLET_WORDS: set[str] = {
-    "bca", "bri", "bni", "mandiri",
-    "dana", "gopay", "go pay", "ovo",
-    "shopeepay", "shopee pay", "cash", "tunai",
+    "cash", "tunai",
 }
 
 _TRANSFER_PHRASES: set[str] = {
@@ -276,7 +274,7 @@ Daftar Kategori Utama & Subkategori yang Diizinkan:
 5. Perbaiki **type** jika tidak konsisten. Tipe yang diizinkan: \
    expense, income, transfer.
 6. Perbaiki **wallet** jika terdeteksi di transkrip. Wallet yang diizinkan: \
-   BCA, BRI, BNI, Mandiri, DANA, GoPay, OVO, ShopeePay, Cash.
+   Cash.
 7. Perbaiki **date** jika ada ekspresi tanggal relatif. Gunakan format \
    YYYY-MM-DD. Referensi: hari ini = {today_date}.
 

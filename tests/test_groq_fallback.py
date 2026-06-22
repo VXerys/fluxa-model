@@ -30,8 +30,8 @@ from app.services.groq_fallback_service import (
 # ────────────────────────────────────────────────────────────────────────────
 
 def _make_local_result(
-    raw: str = "beli nasi padang rp21 ribu pakai bca",
-    normalized: str = "beli nasi padang rp21 ribu pakai bca",
+    raw: str = "beli nasi padang rp21 ribu pakai tunai",
+    normalized: str = "beli nasi padang rp21 ribu pakai tunai",
     amount: int | None = 21000,
     tx_type: str = "expense",
     category: str = "Makan & Minum",
@@ -102,11 +102,11 @@ class TestValidation:
         assert _validate_type("refund") is None
 
     def test_validate_wallet_canonical(self) -> None:
-        assert _validate_wallet("BCA") == "BCA"
-        assert _validate_wallet("GoPay") == "GoPay"
+        assert _validate_wallet("Cash") == "Cash"
+        assert _validate_wallet("BCA") is None
 
     def test_validate_wallet_alias(self) -> None:
-        assert _validate_wallet("gopay") == "GoPay"
+        assert _validate_wallet("gopay") is None
         assert _validate_wallet("tunai") == "Cash"
 
     def test_validate_wallet_invalid(self) -> None:
@@ -134,8 +134,8 @@ class TestTriggerHelpers:
         assert _title_looks_bad("Nasi padang") is False
 
     def test_transcript_contains_wallet(self) -> None:
-        assert _transcript_contains_wallet("beli pakai bca") is True
-        assert _transcript_contains_wallet("pakai dana") is True
+        assert _transcript_contains_wallet("beli pakai tunai") is True
+        assert _transcript_contains_wallet("pakai cash") is True
         assert _transcript_contains_wallet("beli nasi padang") is False
 
     def test_transcript_contains_transfer(self) -> None:
@@ -189,7 +189,7 @@ class TestShouldTrigger:
     def test_trigger_on_low_confidence(self) -> None:
         svc = _make_enabled_service()
         result = _make_local_result(
-            wallet="BCA",
+            wallet="Cash",
             title="Nasi padang",
             description="Nasi padang",
             confidence=0.3,
@@ -201,7 +201,7 @@ class TestShouldTrigger:
         result = _make_local_result(
             raw="beli nasi padang dua puluh satu ribu",
             normalized="beli nasi padang dua puluh satu ribu",
-            wallet="BCA",
+            wallet="Cash",
             title="Nasi padang",
             description="Beli nasi padang",
             warnings=[],
@@ -223,13 +223,13 @@ class TestApplyCorrections:
             "description": "Beli nasi padang",
             "type": "expense",
             "category": "Makan & Minum",
-            "wallet": "BCA",
+            "wallet": "Cash",
             "reason": "corrected title and wallet",
         }
         result = svc.apply_corrections(local, groq_resp)
         assert result["transaction"]["title"] == "Nasi Padang"
         assert result["transaction"]["description"] == "Beli nasi padang"
-        assert result["transaction"]["wallet"] == "BCA"
+        assert result["transaction"]["wallet"] == "Cash"
         assert "groq_fallback_used" in result["warnings"]
 
     def test_ignores_invalid_category(self) -> None:
@@ -309,7 +309,7 @@ class TestMaybeApply:
         local = _make_local_result(
             raw="beli nasi padang dua puluh satu ribu",
             normalized="beli nasi padang dua puluh satu ribu",
-            wallet="BCA",
+            wallet="Cash",
             title="Nasi padang",
             description="Beli nasi padang",
             warnings=[],
@@ -328,7 +328,7 @@ class TestMaybeApply:
             "description": "Beli nasi padang",
             "type": None,
             "category": None,
-            "wallet": "BCA",
+            "wallet": "Cash",
             "reason": "corrected",
         }
 
@@ -348,7 +348,7 @@ class TestMaybeApply:
 
         result = svc.maybe_apply(local)
         assert result["transaction"]["title"] == "Nasi Padang"
-        assert result["transaction"]["wallet"] == "BCA"
+        assert result["transaction"]["wallet"] == "Cash"
         assert "groq_fallback_used" in result["warnings"]
 
     @patch("app.services.groq_fallback_service.httpx.Client")
@@ -414,7 +414,7 @@ class TestGroqResponseParsing:
             "description": "Beli jeruk nipis",
             "type": "expense",
             "category": "Belanja",
-            "wallet": "BCA",
+            "wallet": "Cash",
             "reason": "corrected",
         }
         # Groq sometimes wraps in ```json ... ```
