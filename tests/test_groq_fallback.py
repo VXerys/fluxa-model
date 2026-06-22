@@ -203,7 +203,7 @@ class TestShouldTrigger:
             normalized="beli nasi padang dua puluh satu ribu",
             wallet="BCA",
             title="Nasi padang",
-            description="Nasi padang",
+            description="Beli nasi padang",
             warnings=[],
             confidence=0.95,
         )
@@ -311,7 +311,7 @@ class TestMaybeApply:
             normalized="beli nasi padang dua puluh satu ribu",
             wallet="BCA",
             title="Nasi padang",
-            description="Nasi padang",
+            description="Beli nasi padang",
             warnings=[],
             confidence=0.95,
         )

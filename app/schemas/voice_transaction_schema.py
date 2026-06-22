@@ -24,6 +24,7 @@ class TransactionResponse(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     currency: str = "IDR"
+    date: Optional[str] = None
 
 
 class ClassificationResponse(BaseModel):

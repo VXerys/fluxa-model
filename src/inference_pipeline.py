@@ -22,6 +22,7 @@ from dataclasses import dataclass, asdict
 from typing import Any, Optional
 
 from src.amount_parser import parse_amount
+from src.date_parser import parse_date
 from src.text_normalizer import normalize_text
 from src.title_extractor import extract_title
 from app.services.groq_fallback_service import groq_fallback_service
@@ -82,6 +83,7 @@ class TransactionDraft:
     title: Optional[str]
     description: Optional[str]
     currency: str = "IDR"
+    date: Optional[str] = None
 
 
 @dataclass
@@ -173,6 +175,9 @@ def infer_transaction(
     # --- Title extraction (local, rule-based) ---
     local_title = extract_title(normalized)
 
+    # --- Date extraction (local, rule-based) ---
+    parsed_date = parse_date(normalized)
+
     warnings: list[str] = []
 
     if category_warning is not None:
@@ -197,6 +202,7 @@ def infer_transaction(
         title=local_title if local_title else None,
         description=local_title if local_title else None,
         currency="IDR",
+        date=parsed_date,
     )
 
     classification = ClassificationResult(

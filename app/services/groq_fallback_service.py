@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import re
+from datetime import date
 from typing import Any, Optional
 
 import httpx
@@ -84,6 +85,19 @@ _SUSPICIOUS_STT_WORDS: set[str] = {
     "aduh", "duh", "yah",
 }
 
+# Sundanese-dialect words that signal the transcript needs LLM correction.
+_SUNDANESE_KEYWORDS: set[str] = {
+    "meser", "meuli", "mayar", "nampi", "nambut", "nginjeum",
+    "nyimpen", "nyokot", "nutup", "ngahutang",
+    "kamari", "kemari", "kelmarin", "isukan", "isuk", "pageto",
+    "ayeuna", "mangkukna", "poe",
+    "senen", "salasa", "rebo", "kemis", "jumaah", "saptu", "ahad",
+    "artos", "duit", "sangu", "lauk", "cai",
+    "ka", "ti", "keur", "kanggo", "jeung", "sareng",
+    "teh", "mah", "naon",
+    "maser",
+}
+
 
 def _title_looks_bad(title: str | None) -> bool:
     """Return True if the title/description is empty, too short, or noisy."""
@@ -111,20 +125,76 @@ def _transcript_looks_noisy(normalized: str) -> bool:
 
 
 # ────────────────────────────────────────────────────────────────────────────
+# Sundanese detection helper
+# ────────────────────────────────────────────────────────────────────────────
+
+def _transcript_contains_sundanese(text: str) -> bool:
+    """Return True if the transcript contains Sundanese-dialect words."""
+    tokens = set(text.lower().split())
+    return bool(tokens & _SUNDANESE_KEYWORDS)
+
+
+# ────────────────────────────────────────────────────────────────────────────
 # Groq prompt
 # ────────────────────────────────────────────────────────────────────────────
 
-_SYSTEM_PROMPT = """\
-Kamu adalah asisten koreksi transaksi keuangan Indonesia.
+_SYSTEM_PROMPT_TEMPLATE = """\
+Kamu adalah asisten koreksi transaksi keuangan Indonesia yang sangat paham \
+bahasa Sunda (Sundanese).
+
+Tanggal hari ini: {today_date}
 
 Kamu akan menerima hasil parsing transaksi dari speech-to-text (Whisper) \
 yang mungkin mengandung kesalahan pada judul, deskripsi, kategori, wallet, \
-atau tipe transaksi.
+tipe transaksi, atau tanggal. Transkrip sering menggunakan bahasa Sunda \
+atau campuran Sunda-Indonesia.
 
-Tugasmu:
-1. Perbaiki **title** agar berisi nama item/tujuan transaksi yang bersih, \
-   tanpa angka nominal, tanpa nama wallet. Gunakan huruf kapital di awal kata.
-2. Buat **description** singkat 1 kalimat yang menjelaskan transaksi.
+### Pemahaman Bahasa Sunda
+Kamu HARUS memahami kosakata Sunda berikut dan mengonversinya ke \
+Bahasa Indonesia yang bersih:
+
+**Kata kerja keuangan:**
+- meser / meuli = beli
+- mayar = bayar
+- nampi = terima
+- nambut / nginjeum = pinjam
+- ngahutang = hutang
+- nyimpen = simpan
+- nyokot = ambil
+
+**Makanan & benda:**
+- sangu = nasi
+- lauk = ikan/lauk-pauk
+- cai = air/minuman
+- artos / duit = uang
+
+**Waktu & tanggal (Sunda):**
+- kamari / kemari = kemarin
+- isukan / isuk = besok
+- ayeuna = hari ini
+- mangkukna = kemarin lusa (2 hari lalu)
+- poe = hari
+- senen = senin, salasa = selasa, rebo = rabu
+- kemis = kamis, jumaah = jumat, saptu = sabtu, ahad = minggu
+
+**Preposisi:**
+- ka = ke, ti = dari, keur/kanggo = untuk
+- jeung/sareng = dan/dengan
+
+Contoh konversi:
+- "meser sangu padang kamari" → title: "Nasi Padang", description: "Beli nasi padang kemarin"
+- "mayar ongkos angkot poe senen kemari" → title: "Ongkos Angkot", description: "Bayar ongkos angkot hari Senin kemarin"
+- "nampi gajih" → title: "Gaji", description: "Terima gaji"
+- "meuli obat ti apotek" → title: "Obat", description: "Beli obat dari apotek"
+
+### Tugasmu:
+1. Perbaiki **title** agar berisi nama item/tujuan transaksi yang bersih \
+   dalam Bahasa Indonesia, tanpa angka nominal, tanpa nama wallet, tanpa \
+   kata tanggal/waktu. Gunakan huruf kapital di awal setiap kata.
+2. Buat **description** yang merupakan kalimat pendek (1 kalimat) dalam \
+   Bahasa Indonesia yang menjelaskan transaksi secara natural. \
+   SELALU berikan description yang bermakna, jangan pernah kirim null \
+   untuk description.
 3. Perbaiki **category** jika tidak sesuai konteks. Kategori yang diizinkan: \
    Makan & Minum, Transportasi, Belanja, Tagihan & Utilitas, Hiburan, \
    Kesehatan, Gaji, Freelance, Transfer.
@@ -132,23 +202,32 @@ Tugasmu:
    expense, income, transfer.
 5. Perbaiki **wallet** jika terdeteksi di transkrip. Wallet yang diizinkan: \
    BCA, BRI, BNI, Mandiri, DANA, GoPay, OVO, ShopeePay, Cash.
+6. Perbaiki **date** jika ada ekspresi tanggal relatif. Gunakan format \
+   YYYY-MM-DD. Referensi: hari ini = {today_date}.
 
 Aturan penting:
 - Jangan mengubah nominal/amount.
 - Jika suatu field sudah benar, kirim null untuk field tersebut.
-- Jika tidak yakin, kirim null.
+- Untuk **description**, SELALU berikan kalimat yang bermakna.
+- Jika tidak yakin, kirim null (kecuali description).
 - Jawab HANYA dengan JSON valid, tanpa teks lain.
 
 Format respons (JSON saja):
-{
+{{
   "title": "string atau null",
-  "description": "string atau null",
+  "description": "string (WAJIB, jangan null)",
   "type": "expense|income|transfer atau null",
   "category": "kategori yang diizinkan atau null",
   "wallet": "wallet yang diizinkan atau null",
+  "date": "YYYY-MM-DD atau null",
   "reason": "alasan singkat koreksi"
-}\
+}}\
 """
+
+
+def _build_system_prompt() -> str:
+    """Build the system prompt with today's date injected."""
+    return _SYSTEM_PROMPT_TEMPLATE.format(today_date=date.today().isoformat())
 
 
 def _build_user_message(local_result: dict[str, Any]) -> str:
@@ -166,6 +245,7 @@ def _build_user_message(local_result: dict[str, Any]) -> str:
             "local_wallet": transaction.get("wallet"),
             "local_title": transaction.get("title"),
             "local_description": transaction.get("description"),
+            "local_date": transaction.get("date"),
             "warnings": warnings,
         },
         ensure_ascii=False,
@@ -196,6 +276,23 @@ def _validate_type(value: str | None) -> str | None:
         return None
     lowered = value.lower().strip()
     return lowered if lowered in ALLOWED_TYPES else None
+
+
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _validate_date(value: str | None) -> bool:
+    """Return True if value is a valid YYYY-MM-DD date string."""
+    if value is None:
+        return False
+    if not _DATE_RE.match(value.strip()):
+        return False
+    try:
+        parts = value.strip().split("-")
+        date(int(parts[0]), int(parts[1]), int(parts[2]))
+        return True
+    except (ValueError, IndexError):
+        return False
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -267,6 +364,15 @@ class GroqFallbackService:
         if confidence is not None and confidence < 0.5:
             return True
 
+        # 7. Sundanese dialect detected — needs LLM for clean title/description
+        if _transcript_contains_sundanese(raw_text):
+            return True
+
+        # 8. Description is empty or same as title — needs enrichment
+        local_desc = transaction.get("description")
+        if not local_desc or local_desc == local_title:
+            return True
+
         return False
 
     def call_groq(self, local_result: dict[str, Any]) -> Optional[dict[str, Any]]:
@@ -282,7 +388,7 @@ class GroqFallbackService:
         payload = {
             "model": self._model,
             "messages": [
-                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "system", "content": _build_system_prompt()},
                 {"role": "user", "content": _build_user_message(local_result)},
             ],
             "temperature": 0.1,
@@ -374,6 +480,13 @@ class GroqFallbackService:
         if groq_wallet and groq_wallet != tx.get("wallet"):
             tx["wallet"] = groq_wallet
             applied = True
+
+        # Date
+        groq_date = groq_response.get("date")
+        if groq_date and isinstance(groq_date, str) and _validate_date(groq_date):
+            if groq_date != tx.get("date"):
+                tx["date"] = groq_date
+                applied = True
 
         if applied:
             result["warnings"].append("groq_fallback_used")

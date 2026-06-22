@@ -19,10 +19,13 @@ _STRIP_WORDS: set[str] = {
     # Transaction verbs
     "beli", "buat", "bayar", "mayar", "meser", "meuli", "jajan",
     "terima", "nampi", "dapat", "dapet", "kirim", "transfer",
-    "pindah", "setor", "tarik",
+    "pindah", "setor", "tarik", "nambut", "nginjeum", "ngahutang",
+    "nyimpen", "nyokot", "nutup", "simpan", "ambil", "tutup",
+    "pinjam", "hutang",
     # Prepositions / connectors
     "di", "ke", "ka", "dari", "ti", "untuk", "buat", "pakai",
-    "pake", "lewat", "via", "dengan",
+    "pake", "lewat", "via", "dengan", "keur", "kanggo", "jeung",
+    "sareng", "teu", "henteu", "dan", "tidak",
     # Currency / amount noise
     "rp", "rupiah", "idr",
     # Number words (units)
@@ -38,7 +41,20 @@ _STRIP_WORDS: set[str] = {
     # Wallet names (lowercase)
     "bca", "bri", "bni", "mandiri", "gopay", "go", "pay",
     "dana", "ovo", "shopeepay", "shopee", "cash", "tunai",
+    # Date / day / time words (should not be part of title)
+    "hari", "poe", "ini", "kemarin", "kemaren", "kamari", "kemari",
+    "kelmarin", "lusa", "mangkukna", "besok", "isukan", "isuk",
+    "pageto", "ayeuna", "tadi", "lalu", "depan", "hareup",
+    "senin", "senen", "selasa", "salasa", "rabu", "rebo",
+    "kamis", "kemis", "jumat", "jumaah", "sabtu", "saptu",
+    "minggu", "ahad", "yang",
+    # Time of day
+    "pagi", "siang", "sore", "malam", "peuting", "wengi",
+    "beurang",
+    # Common Sundanese particles (no meaning in title)
+    "teh", "mah", "naon", "apa",
 }
+
 
 # Regex to strip standalone digits and "rpNN" patterns.
 _DIGIT_PATTERN = re.compile(r"\b(?:rp\s*)?\d+\b", re.IGNORECASE)
