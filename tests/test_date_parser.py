@@ -81,6 +81,16 @@ class TestTomorrow:
         assert parse_date("kirim uang esok", BASE) == "2026-06-18"
 
 
+class TestDayAfterTomorrow:
+    """Tests for 'lusa', 'pageto'."""
+
+    def test_lusa(self) -> None:
+        assert parse_date("bayar tagihan lusa", BASE) == "2026-06-19"
+
+    def test_pageto(self) -> None:
+        assert parse_date("meser obat pageto", BASE) == "2026-06-19"
+
+
 class TestWeekdayPastIndonesian:
     """Tests for 'hari <day> kemarin' / '<day> kemarin' (Indonesian)."""
 

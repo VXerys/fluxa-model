@@ -210,6 +210,7 @@ Bahasa Indonesia yang bersih:
 - isukan / isuk = besok
 - ayeuna = hari ini
 - mangkukna = kemarin lusa (2 hari lalu)
+- pageto = lusa (2 hari lagi)
 - poe = hari
 - senen = senin, salasa = selasa, rebo = rabu
 - kemis = kamis, jumaah = jumat, saptu = sabtu, ahad = minggu

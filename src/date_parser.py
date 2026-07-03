@@ -69,6 +69,10 @@ _TOMORROW_WORDS: set[str] = {
     "besok", "isukan", "esok",
 }
 
+_DAY_AFTER_TOMORROW_PHRASES: set[str] = {
+    "lusa", "pageto",
+}
+
 _PAST_MODIFIER_WORDS: set[str] = {
     "kemarin", "kemaren", "kamari", "kemari", "lalu", "lalu",
     "yang lalu", "wingi", "tadi",
@@ -188,5 +192,10 @@ def parse_date(
     for word in _TOMORROW_WORDS:
         if re.search(rf"\b{re.escape(word)}\b", text):
             return (base_date + timedelta(days=1)).isoformat()
+
+    # ── 7. Day after tomorrow ─────────────────────────────────────────
+    for phrase in _DAY_AFTER_TOMORROW_PHRASES:
+        if re.search(rf"\b{re.escape(phrase)}\b", text):
+            return (base_date + timedelta(days=2)).isoformat()
 
     return None
