@@ -30,55 +30,87 @@ class TestYesterday:
     """Tests for 'kemarin', 'kamari', 'kemari', 'kelmarin'."""
 
     def test_kemarin(self) -> None:
-        assert parse_date("beli nasi kemarin", BASE) == "2026-06-16"
+        date_str, cleaned = parse_date("beli nasi kemarin", BASE)
+        assert date_str == "2026-06-16"
+        assert cleaned == "beli nasi"
 
     def test_kamari(self) -> None:
-        assert parse_date("meser sangu kamari", BASE) == "2026-06-16"
+        date_str, cleaned = parse_date("meser sangu kamari", BASE)
+        assert date_str == "2026-06-16"
+        assert cleaned == "meser sangu"
 
     def test_kemari(self) -> None:
-        assert parse_date("bayar ongkos kemari", BASE) == "2026-06-16"
+        date_str, cleaned = parse_date("bayar ongkos kemari", BASE)
+        assert date_str == "2026-06-16"
+        assert cleaned == "bayar ongkos"
 
     def test_kelmarin(self) -> None:
-        assert parse_date("beli obat kelmarin", BASE) == "2026-06-16"
+        date_str, cleaned = parse_date("beli obat kelmarin", BASE)
+        assert date_str == "2026-06-16"
+        assert cleaned == "beli obat"
 
     def test_kemarin_embedded(self) -> None:
-        assert parse_date("beli seblak 15 ribu kemarin", BASE) == "2026-06-16"
+        date_str, cleaned = parse_date("beli seblak 15 ribu kemarin", BASE)
+        assert date_str == "2026-06-16"
+        assert cleaned == "beli seblak 15 ribu"
 
 
 class TestDayBeforeYesterday:
     """Tests for 'kemarin lusa', 'mangkukna'."""
 
     def test_kemarin_lusa(self) -> None:
-        assert parse_date("bayar wifi kemarin lusa", BASE) == "2026-06-15"
+        date_str, cleaned = parse_date("bayar wifi kemarin lusa", BASE)
+        assert date_str == "2026-06-15"
+        assert cleaned == "bayar wifi"
 
     def test_mangkukna(self) -> None:
-        assert parse_date("meser cai mangkukna", BASE) == "2026-06-15"
+        date_str, cleaned = parse_date("meser cai mangkukna", BASE)
+        assert date_str == "2026-06-15"
+        assert cleaned == "meser cai"
 
     def test_lusa_kemarin(self) -> None:
-        assert parse_date("beli nasi lusa kemarin", BASE) == "2026-06-15"
+        date_str, cleaned = parse_date("beli nasi lusa kemarin", BASE)
+        assert date_str == "2026-06-15"
+        assert cleaned == "beli nasi"
 
 
 class TestToday:
     """Tests for 'hari ini', 'ayeuna'."""
 
     def test_hari_ini(self) -> None:
-        assert parse_date("beli nasi hari ini", BASE) == "2026-06-17"
+        date_str, cleaned = parse_date("beli nasi hari ini", BASE)
+        assert date_str == "2026-06-17"
+        assert cleaned == "beli nasi"
 
     def test_ayeuna(self) -> None:
-        assert parse_date("mayar artos ayeuna", BASE) == "2026-06-17"
+        date_str, cleaned = parse_date("mayar artos ayeuna", BASE)
+        assert date_str == "2026-06-17"
+        assert cleaned == "mayar artos"
+
+    def test_sekarang(self) -> None:
+        """Test new 'sekarang' keyword for today."""
+        date_str, cleaned = parse_date("beli kopi sekarang", BASE)
+        assert date_str == "2026-06-17"
+        assert cleaned == "beli kopi"
 
 
 class TestTomorrow:
     """Tests for 'besok', 'isukan', 'esok'."""
 
     def test_besok(self) -> None:
-        assert parse_date("bayar tagihan besok", BASE) == "2026-06-18"
+        date_str, cleaned = parse_date("bayar tagihan besok", BASE)
+        assert date_str == "2026-06-18"
+        assert cleaned == "bayar tagihan"
 
     def test_isukan(self) -> None:
-        assert parse_date("meser obat isukan", BASE) == "2026-06-18"
+        date_str, cleaned = parse_date("meser obat isukan", BASE)
+        assert date_str == "2026-06-18"
+        assert cleaned == "meser obat"
 
     def test_esok(self) -> None:
-        assert parse_date("kirim uang esok", BASE) == "2026-06-18"
+        date_str, cleaned = parse_date("kirim uang esok", BASE)
+        assert date_str == "2026-06-18"
+        assert cleaned == "kirim uang"
 
 
 class TestDayAfterTomorrow:

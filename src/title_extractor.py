@@ -1,12 +1,12 @@
 """Rule-based title extractor for Indonesian finance voice transcripts.
 
-Strips amount tokens, wallet names, currency words, and common transaction
-verbs from the normalized text to produce a clean title candidate.
+Uses verb-anchor extraction to identify transaction titles by scanning for
+action verbs and extracting the noun phrase that follows.
 
 Examples:
-    "beli nasi padang rp21 ribu pakai bca"  ->  "nasi padang"
-    "12 ribu jeruk nipis dengan bca"        ->  "jeruk nipis"
-    "transfer bca ke gopay 50 ribu"         ->  ""
+    "beli nasi padang"                ->  "nasi padang"
+    "bayar wifi"                      ->  "wifi"
+    "beli kopi kenangan buat lembur"  ->  "kopi kenangan"
 """
 
 from __future__ import annotations
@@ -14,18 +14,22 @@ from __future__ import annotations
 import re
 
 
-# Words to strip — they are not part of the transaction "item" title.
-_STRIP_WORDS: set[str] = {
-    # Transaction verbs
-    "beli", "buat", "bayar", "mayar", "meser", "meuli", "jajan",
-    "terima", "nampi", "dapat", "dapet", "kirim", "transfer",
-    "pindah", "setor", "tarik", "nambut", "nginjeum", "ngahutang",
-    "nyimpen", "nyokot", "nutup", "simpan", "ambil", "tutup",
-    "pinjam", "hutang",
+# Transaction action verbs — anchor points for title extraction.
+_ACTION_VERBS: frozenset[str] = frozenset({
+    "beli", "bayar", "mayar", "meser", "meuli", "jajan", "transfer", "kirim"
+})
+
+# Stop words — boundary markers where title extraction ends.
+_STOP_WORDS: frozenset[str] = frozenset({
+    "buat", "untuk", "karena", "keur", "kanggo"
+})
+
+# Noise words to filter out (wallets, connectors, currency, number words, etc.)
+# These will be removed until the sequential pipeline is fully implemented.
+_NOISE_WORDS: frozenset[str] = frozenset({
     # Prepositions / connectors
-    "di", "ke", "ka", "dari", "ti", "untuk", "buat", "pakai",
-    "pake", "lewat", "via", "dengan", "keur", "kanggo", "jeung",
-    "sareng", "teu", "henteu", "dan", "tidak",
+    "di", "ke", "ka", "dari", "ti", "pakai", "pake", "lewat", "via", 
+    "dengan", "jeung", "sareng", "teu", "henteu", "dan", "tidak",
     # Currency / amount noise
     "rp", "rupiah", "idr",
     # Number words (units)
@@ -41,7 +45,7 @@ _STRIP_WORDS: set[str] = {
     # Wallet names (lowercase)
     "bca", "bri", "bni", "mandiri", "gopay", "go", "pay",
     "dana", "ovo", "shopeepay", "shopee", "cash", "tunai",
-    # Date / day / time words (should not be part of title)
+    # Date / day / time words
     "hari", "poe", "ini", "kemarin", "kemaren", "kamari", "kemari",
     "kelmarin", "lusa", "mangkukna", "besok", "isukan", "isuk",
     "pageto", "ayeuna", "tadi", "lalu", "depan", "hareup",
@@ -49,38 +53,70 @@ _STRIP_WORDS: set[str] = {
     "kamis", "kemis", "jumat", "jumaah", "sabtu", "saptu",
     "minggu", "ahad", "yang",
     # Time of day
-    "pagi", "siang", "sore", "malam", "peuting", "wengi",
-    "beurang",
-    # Common Sundanese particles (no meaning in title)
+    "pagi", "siang", "sore", "malam", "peuting", "wengi", "beurang",
+    # Common Sundanese particles
     "teh", "mah", "naon", "apa",
-}
+})
 
 
-# Regex to strip standalone digits and "rpNN" patterns.
-_DIGIT_PATTERN = re.compile(r"\b(?:rp\s*)?\d+\b", re.IGNORECASE)
-
-
-def extract_title(normalized_text: str) -> str:
+def extract_title(cleaned_text: str) -> str:
     """Extract a clean transaction title from normalized text.
 
     Args:
-        normalized_text: Text after ``normalize_text()`` from the text normalizer.
+        cleaned_text: Text after date and amount tokens have been removed.
 
     Returns:
-        Cleaned title string.  May be empty if no meaningful words remain.
+        Title string (max 100 chars). Empty string if no valid title found.
     """
-    if not normalized_text:
+    if not cleaned_text:
         return ""
 
-    # Remove digit/amount patterns first.
-    cleaned = _DIGIT_PATTERN.sub(" ", normalized_text.lower())
+    # Normalize to lowercase and remove punctuation.
+    text = cleaned_text.lower()
+    text = re.sub(r"[^a-z\s]", " ", text)
 
-    # Remove punctuation leftovers.
-    cleaned = re.sub(r"[^a-z\s]", " ", cleaned)
+    # Tokenize.
+    tokens = text.split()
+    if not tokens:
+        return ""
 
-    tokens = cleaned.split()
+    # Step 1: Scan for the first action verb.
+    verb_index = -1
+    for i, tok in enumerate(tokens):
+        if tok in _ACTION_VERBS:
+            verb_index = i
+            break
 
-    # Keep only tokens that are not in the strip set.
-    kept = [tok for tok in tokens if tok not in _STRIP_WORDS and len(tok) > 1]
+    # Step 2: Collect tokens after the verb until a stop word or end.
+    if verb_index >= 0:
+        # Collect tokens after the verb.
+        candidate_tokens = []
+        for i in range(verb_index + 1, len(tokens)):
+            if tokens[i] in _STOP_WORDS:
+                break
+            candidate_tokens.append(tokens[i])
+    else:
+        # Fallback: no verb found, collect from start until first stop word.
+        candidate_tokens = []
+        for tok in tokens:
+            if tok in _STOP_WORDS:
+                break
+            candidate_tokens.append(tok)
 
-    return " ".join(kept).strip()
+    # Step 3: Join candidate tokens.
+    candidate = " ".join(candidate_tokens).strip()
+
+    # Step 4: Validate that the candidate contains at least one alphabetic character.
+    if not re.search(r"[a-zA-Z]", candidate):
+        return ""
+
+    # Step 5: Truncate to 100 characters at the last complete word boundary.
+    if len(candidate) <= 100:
+        return candidate
+
+    # Truncate at the last space before the 100-char boundary.
+    truncated = candidate[:100]
+    last_space = truncated.rfind(" ")
+    if last_space > 0:
+        return truncated[:last_space]
+    return truncated

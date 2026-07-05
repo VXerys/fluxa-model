@@ -408,6 +408,7 @@ class GroqFallbackService:
         if not self.is_enabled:
             return False
 
+        parser_hints = local_result.get("parser_hints", {})
         warnings = local_result.get("warnings", [])
         transcript = local_result.get("transcript", {})
         transaction = local_result.get("transaction", {})
@@ -423,8 +424,8 @@ class GroqFallbackService:
         if warnings:
             return True
 
-        # 2. Title is bad
-        if _title_looks_bad(local_title):
+        # 2. Title is bad (skip if local parser already extracted a good title)
+        if _title_looks_bad(local_title) and not parser_hints.get("title_extracted"):
             return True
 
         # 3. Category "Transfer" but type is expense/income and no transfer phrase
@@ -454,10 +455,13 @@ class GroqFallbackService:
         if _transcript_contains_sundanese(raw_text):
             return True
 
-        # 8. Description is empty or same as title — needs enrichment
+        # 8. Description is empty or same as title — needs enrichment (skip if local parser extracted description)
         local_desc = transaction.get("description")
-        if not local_desc or local_desc == local_title:
+        if (not local_desc or local_desc == local_title) and not parser_hints.get("description_extracted"):
             return True
+
+        # 9. Date guard — if local parser successfully extracted a date, do not trigger for missing date
+        # (No existing date-specific trigger, but guard added for future safety)
 
         return False
 

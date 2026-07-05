@@ -18,13 +18,16 @@ The resolver is important because some category labels imply a fixed transaction
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, asdict
 from typing import Any, Optional
 
 from src.amount_parser import parse_amount
 from src.date_parser import parse_date
+from src.description_extractor import extract_description
 from src.text_normalizer import normalize_text
 from src.title_extractor import extract_title
+from src.pipeline_logger import pipeline_logger
 from app.services.groq_fallback_service import groq_fallback_service
 
 
@@ -155,8 +158,29 @@ def infer_transaction(
     Returns:
         Dict compatible with Fluxa backend response draft.
     """
-    normalized = normalize_text(text)
+    t_start = time.perf_counter()
 
+    # Step 0: Normalize
+    normalized = normalize_text(text)
+    pipeline_logger.log_raw_input(text)
+
+    # Step 1: Date — sequential tuple-returning parse
+    t0 = time.perf_counter()
+    parsed_date, text_after_date = parse_date(normalized)
+    pipeline_logger.log_after_date(parsed_date, text_after_date, (time.perf_counter() - t0) * 1000)
+
+    # Step 2: Amount — consumes date-cleaned text
+    t0 = time.perf_counter()
+    pred_amount, text_after_amount = parse_amount(text_after_date)
+    pipeline_logger.log_after_amount(pred_amount, text_after_amount, (time.perf_counter() - t0) * 1000)
+
+    # Step 3: Title + Description — consume amount-cleaned text
+    t0 = time.perf_counter()
+    local_title = extract_title(text_after_amount)
+    local_desc = extract_description(text_after_amount)
+    pipeline_logger.log_after_title_desc(local_title, local_desc, (time.perf_counter() - t0) * 1000)
+
+    # Step 4: Classification
     raw_pred_type = str(type_model.predict([text])[0])
     raw_pred_category = str(category_model.predict([text])[0])
     pred_category, category_warning = resolve_category_by_keywords(
@@ -164,6 +188,8 @@ def infer_transaction(
         raw_pred_category,
     )
     resolved_type = resolve_transaction_type(raw_pred_type, pred_category)
+    t0 = time.perf_counter()
+    pipeline_logger.log_final_prediction(pred_category, resolved_type, (time.perf_counter() - t0) * 1000)
 
     pred_wallet: Optional[str] = "Cash"
     # Bypassed other wallet options for now
@@ -171,14 +197,6 @@ def infer_transaction(
     #     wallet_prediction = wallet_model.predict([text])[0]
     #     if wallet_prediction is not None and str(wallet_prediction).lower() not in {"none", "null", "nan"}:
     #         pred_wallet = str(wallet_prediction)
-
-    pred_amount = parse_amount(text)
-
-    # --- Title extraction (local, rule-based) ---
-    local_title = extract_title(normalized)
-
-    # --- Date extraction (local, rule-based) ---
-    parsed_date = parse_date(normalized)
 
     warnings: list[str] = []
 
@@ -196,13 +214,20 @@ def infer_transaction(
             f"type_resolved_by_category:{raw_pred_type}->{resolved_type}"
         )
 
+    # Build parser_hints for Groq fallback suppression
+    parser_hints = {
+        "title_extracted": bool(local_title and len(local_title.strip()) > 3),
+        "date_extracted": parsed_date is not None,
+        "description_extracted": bool(local_desc),
+    }
+
     transaction = TransactionDraft(
         type=resolved_type,
         amount=pred_amount,
         category=pred_category,
         wallet=pred_wallet,
         title=local_title if local_title else None,
-        description=local_title if local_title else None,
+        description=local_desc if local_desc else None,
         currency="IDR",
         date=parsed_date,
         subcategory=None,
@@ -224,9 +249,15 @@ def infer_transaction(
         "transaction": asdict(transaction),
         "classification": asdict(classification),
         "warnings": warnings,
+        "parser_hints": parser_hints,
     }
 
     # --- Groq fallback (optional post-processor) ---
     result = groq_fallback_service.maybe_apply(local_result)
+
+    total_ms = (time.perf_counter() - t_start) * 1000
+    pipeline_logger.log_duration(total_ms)
+    if total_ms > 500:
+        pipeline_logger.log_performance_warning(total_ms)
 
     return result

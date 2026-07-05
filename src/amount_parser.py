@@ -193,17 +193,27 @@ def _parse_scaled_sequence(tokens: list[str]) -> Optional[int]:
     return None
 
 
-def parse_amount(text: str) -> Optional[int]:
+def parse_amount(text: str) -> tuple[Optional[int], str]:
+    """Parse Indonesian/Sundanese money amounts from text.
+    
+    Returns:
+        A tuple of (amount_in_rupiah | None, text_with_amount_tokens_removed).
+        When no amount is found, returns (None, original_text).
+    """
     normalized = _normalize_amount_text(text)
     if not normalized:
-        return None
+        return None, text
 
     # Rp35.000 / Rp1.500.000 / Rp750 000 / 1 500 000
     money_match = re.search(r"(?:rp\s*)?(\d{1,3}(?:[\s.,]\d{3})+)", normalized)
     if money_match:
         digits = re.sub(r"\D", "", money_match.group(1))
         if digits:
-            return int(digits)
+            amount = int(digits)
+            # Remove matched span from normalized text
+            cleaned = normalized[:money_match.start()] + " " + normalized[money_match.end():]
+            cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+            return amount, cleaned
 
     # 35rb, 35k, 2jt, 2 juta
     compact_match = re.search(
@@ -213,34 +223,58 @@ def parse_amount(text: str) -> Optional[int]:
     if compact_match:
         number = float(compact_match.group(1).replace(",", "."))
         multiplier = _MULTIPLIERS[compact_match.group(2)]
-        return int(number * multiplier)
+        amount = int(number * multiplier)
+        # Remove matched span from normalized text
+        cleaned = normalized[:compact_match.start()] + " " + normalized[compact_match.end():]
+        cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+        return amount, cleaned
 
     # Plain number such as 1000000.
     plain_match = re.search(r"\b\d{4,}\b", normalized)
     if plain_match:
-        return int(plain_match.group(0))
+        amount = int(plain_match.group(0))
+        # Remove matched span from normalized text
+        cleaned = normalized[:plain_match.start()] + " " + normalized[plain_match.end():]
+        cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+        return amount, cleaned
 
     # Word-based amount. Extract contiguous number-token sequences.
     tokens = normalized.replace(".", " ").replace(",", " ").split()
     best_amount: Optional[int] = None
+    best_start_idx: Optional[int] = None
+    best_end_idx: Optional[int] = None
     sequence: list[str] = []
+    sequence_start: Optional[int] = None
 
-    for tok in tokens:
+    for idx, tok in enumerate(tokens):
         if tok in _NUMBER_TOKENS:
+            if not sequence:
+                sequence_start = idx
             sequence.append(tok)
         else:
             if sequence:
                 amount = _parse_scaled_sequence(sequence)
                 if amount is not None and (best_amount is None or amount > best_amount):
                     best_amount = amount
+                    best_start_idx = sequence_start
+                    best_end_idx = idx
                 sequence = []
+                sequence_start = None
 
     if sequence:
         amount = _parse_scaled_sequence(sequence)
         if amount is not None and (best_amount is None or amount > best_amount):
             best_amount = amount
+            best_start_idx = sequence_start
+            best_end_idx = len(tokens)
 
-    return best_amount
+    if best_amount is not None:
+        # Remove the matched token sequence
+        cleaned_tokens = tokens[:best_start_idx] + tokens[best_end_idx:]
+        cleaned = " ".join(cleaned_tokens)
+        return best_amount, cleaned
+
+    return None, text
 
 
 def amount_exact_match(predicted: Optional[int], expected: Optional[int]) -> bool:

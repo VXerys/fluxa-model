@@ -16,9 +16,13 @@ All outputs are ISO-8601 date strings (``YYYY-MM-DD``).
 
 from __future__ import annotations
 
+import logging
 import re
 from datetime import date, timedelta
 from typing import Optional
+
+# Placeholder logger for validation errors
+pipeline_logger = logging.getLogger("fluxa.pipeline")
 
 # ────────────────────────────────────────────────────────────────────────────
 # Day-name mapping (Indonesian and Sundanese → Python weekday int)
@@ -62,7 +66,7 @@ _DAY_BEFORE_YESTERDAY_PHRASES: set[str] = {
 }
 
 _TODAY_WORDS: set[str] = {
-    "hari ini", "ayeuna",
+    "hari ini", "ayeuna", "sekarang",
 }
 
 _TOMORROW_WORDS: set[str] = {
@@ -138,7 +142,7 @@ def _next_weekday(target_weekday: int, base: date) -> date:
 def parse_date(
     normalized_text: str,
     base_date: Optional[date] = None,
-) -> Optional[str]:
+) -> tuple[Optional[str], str]:
     """Parse a relative date expression from normalized Indonesian/Sundanese text.
 
     Args:
@@ -146,21 +150,41 @@ def parse_date(
         base_date: Reference date (defaults to ``date.today()``).
 
     Returns:
-        ISO-8601 date string (``YYYY-MM-DD``) if a relative date is
-        detected, otherwise ``None``.
+        A tuple of (date_str, cleaned_text) where:
+        - date_str: ISO-8601 date string (``YYYY-MM-DD``) if a relative date is
+          detected, otherwise ``None``.
+        - cleaned_text: The input text with the matched date expression removed,
+          or the original text if no match was found.
     """
     if not normalized_text:
-        return None
+        return None, normalized_text
 
     if base_date is None:
         base_date = date.today()
 
     text = normalized_text.lower().strip()
+    original_text = text
+
+    def _validate_and_clean(result_date: date, matched_expr: str) -> tuple[Optional[str], str]:
+        """Validate date is within ±365 days and remove matched expression from text."""
+        delta = abs((result_date - base_date).days)
+        if delta > 365:
+            pipeline_logger.warning(
+                "[VALIDATION ERROR] | field=date | reason=outside 365-day window | value=%s",
+                result_date.isoformat()
+            )
+            return None, original_text
+        
+        # Remove matched expression from text
+        cleaned = re.sub(rf"\b{re.escape(matched_expr)}\b", " ", text, flags=re.IGNORECASE)
+        cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+        return result_date.isoformat(), cleaned
 
     # ── 1. Day-before-yesterday phrases (check before yesterday) ──────
     for phrase in _DAY_BEFORE_YESTERDAY_PHRASES:
         if phrase in text:
-            return (base_date - timedelta(days=2)).isoformat()
+            result_date = base_date - timedelta(days=2)
+            return _validate_and_clean(result_date, phrase)
 
     # ── 2. Specific weekday + past modifier ───────────────────────────
     m = _WEEKDAY_PAST_RE.search(text)
@@ -168,7 +192,9 @@ def parse_date(
         day_name = m.group(1).lower().strip()
         target_weekday = _DAY_NAMES.get(day_name)
         if target_weekday is not None:
-            return _most_recent_weekday(target_weekday, base_date).isoformat()
+            result_date = _most_recent_weekday(target_weekday, base_date)
+            matched_expr = m.group(0)
+            return _validate_and_clean(result_date, matched_expr)
 
     # ── 3. Specific weekday + future modifier ─────────────────────────
     m = _WEEKDAY_NEXT_RE.search(text)
@@ -176,26 +202,31 @@ def parse_date(
         day_name = m.group(1).lower().strip()
         target_weekday = _DAY_NAMES.get(day_name)
         if target_weekday is not None:
-            return _next_weekday(target_weekday, base_date).isoformat()
+            result_date = _next_weekday(target_weekday, base_date)
+            matched_expr = m.group(0)
+            return _validate_and_clean(result_date, matched_expr)
 
     # ── 4. Yesterday ──────────────────────────────────────────────────
     for word in _YESTERDAY_WORDS:
         if re.search(rf"\b{re.escape(word)}\b", text):
-            return (base_date - timedelta(days=1)).isoformat()
+            result_date = base_date - timedelta(days=1)
+            return _validate_and_clean(result_date, word)
 
     # ── 5. Today ──────────────────────────────────────────────────────
     for phrase in _TODAY_WORDS:
         if phrase in text:
-            return base_date.isoformat()
+            return _validate_and_clean(base_date, phrase)
 
     # ── 6. Tomorrow ───────────────────────────────────────────────────
     for word in _TOMORROW_WORDS:
         if re.search(rf"\b{re.escape(word)}\b", text):
-            return (base_date + timedelta(days=1)).isoformat()
+            result_date = base_date + timedelta(days=1)
+            return _validate_and_clean(result_date, word)
 
     # ── 7. Day after tomorrow ─────────────────────────────────────────
     for phrase in _DAY_AFTER_TOMORROW_PHRASES:
         if re.search(rf"\b{re.escape(phrase)}\b", text):
-            return (base_date + timedelta(days=2)).isoformat()
+            result_date = base_date + timedelta(days=2)
+            return _validate_and_clean(result_date, phrase)
 
-    return None
+    return None, original_text
