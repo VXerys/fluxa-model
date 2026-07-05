@@ -15,13 +15,32 @@ import re
 
 
 # Transaction action verbs — anchor points for title extraction.
+# Including Whisper STT variants and colloquial forms
 _ACTION_VERBS: frozenset[str] = frozenset({
-    "beli", "bayar", "mayar", "meser", "meuli", "jajan", "transfer", "kirim"
+    # Standard Indonesian
+    "beli", "bayar", "transfer", "kirim", "jajan", 
+    "byr", "tf", "trnsfer", "krm", "jajanan",
+    # Sundanese
+    "mayar", "meser", "meuli", "mser",
+    # Colloquial/typo variants
+    "bli", "byar", "byyr", "trf", "transferan",
+    "beliin", "bayarin", "kirimkan", "jajanan",
+    # More action verbs
+    "top", "topup", "isi", "ngisi", "tarik", "ambil",
+    "bayarin", "beliin", "transfer", "transferin",
+    "setor", "nabung", "cairin", "cairkan",
 })
 
 # Stop words — boundary markers where title extraction ends.
+# Including more variants and STT typos
 _STOP_WORDS: frozenset[str] = frozenset({
-    "buat", "untuk", "karena", "keur", "kanggo"
+    # Standard
+    "buat", "untuk", "karena", "keur", "kanggo",
+    # Variants
+    "bwat", "untk", "utk", "krn", "krna",
+    "gara", "soalnya", "sebab", "alatan", "margi",
+    # Colloquial
+    "bwt", "tuk", "wat", "bt",
 })
 
 # Noise words to filter out (wallets, connectors, currency, number words, etc.)
@@ -30,8 +49,9 @@ _NOISE_WORDS: frozenset[str] = frozenset({
     # Prepositions / connectors
     "di", "ke", "ka", "dari", "ti", "pakai", "pake", "lewat", "via", 
     "dengan", "jeung", "sareng", "teu", "henteu", "dan", "tidak",
+    "sama", "sm", "dr", "dri",
     # Currency / amount noise
-    "rp", "rupiah", "idr",
+    "rp", "rupiah", "idr", "rupee",
     # Number words (units)
     "nol", "satu", "sa", "hiji", "dua", "tilu", "tiga", "opat",
     "empat", "lima", "genep", "enam", "tujuh", "dalapan", "delapan",
@@ -41,13 +61,14 @@ _NOISE_WORDS: frozenset[str] = frozenset({
     "saratus", "seratus", "sarebu", "seribu", "sajuta", "sejuta",
     "puluh", "belas", "ratus",
     # Multipliers
-    "ribu", "rebu", "rb", "k", "juta", "jt",
+    "ribu", "rebu", "rb", "k", "juta", "jt", "jeti",
     # Wallet names (lowercase)
     "bca", "bri", "bni", "mandiri", "gopay", "go", "pay",
     "dana", "ovo", "shopeepay", "shopee", "cash", "tunai",
+    "linkaja", "link", "aja", "jenius", "jago", "blu",
     # Date / day / time words
     "hari", "poe", "ini", "kemarin", "kemaren", "kamari", "kemari",
-    "kelmarin", "lusa", "mangkukna", "besok", "isukan", "isuk",
+    "kelmarin", "lusa", "mangkukna", "besok", "isukan", "isuk", "isokan",
     "pageto", "ayeuna", "tadi", "lalu", "depan", "hareup",
     "senin", "senen", "selasa", "salasa", "rabu", "rebo",
     "kamis", "kemis", "jumat", "jumaah", "sabtu", "saptu",
@@ -55,7 +76,9 @@ _NOISE_WORDS: frozenset[str] = frozenset({
     # Time of day
     "pagi", "siang", "sore", "malam", "peuting", "wengi", "beurang",
     # Common Sundanese particles
-    "teh", "mah", "naon", "apa",
+    "teh", "mah", "naon", "apa", "oge", "wae", "ge",
+    # Common typos/variants
+    "skrg", "skrng", "hr", "harini", "bsk",
 })
 
 
@@ -89,22 +112,25 @@ def extract_title(cleaned_text: str) -> str:
 
     # Step 2: Collect tokens after the verb until a stop word or end.
     if verb_index >= 0:
-        # Collect tokens after the verb.
+        # Collect tokens after the verb, skipping noise words.
         candidate_tokens = []
         for i in range(verb_index + 1, len(tokens)):
             if tokens[i] in _STOP_WORDS:
                 break
-            candidate_tokens.append(tokens[i])
+            if tokens[i] not in _NOISE_WORDS:
+                candidate_tokens.append(tokens[i])
     else:
-        # Fallback: no verb found, collect from start until first stop word.
+        # Fallback: no verb found, collect from start until first stop word, skip noise.
         candidate_tokens = []
         for tok in tokens:
             if tok in _STOP_WORDS:
                 break
-            candidate_tokens.append(tok)
+            if tok not in _NOISE_WORDS:
+                candidate_tokens.append(tok)
 
-    # Step 3: Join candidate tokens.
-    candidate = " ".join(candidate_tokens).strip()
+    # Step 3: Join candidate tokens, also skipping pure-numeric tokens.
+    filtered = [t for t in candidate_tokens if not re.fullmatch(r'\d+', t)]
+    candidate = " ".join(filtered).strip()
 
     # Step 4: Validate that the candidate contains at least one alphabetic character.
     if not re.search(r"[a-zA-Z]", candidate):

@@ -1,10 +1,12 @@
 """
 Pipeline logging module for structured debugging output with verbosity control.
 
-This module provides the PipelineLogger class for emitting formatted debug logs
+This module provides the PipelineLogger class for emitting formatted logs
 at each stage of the transaction parsing pipeline. It supports three verbosity
 levels (minimal, standard, verbose) controlled via the PARSER_LOG_LEVEL environment
 variable.
+
+Logs are sent to stdout/stderr with INFO level for visibility in Huggingface/Docker logs.
 """
 
 import logging
@@ -23,7 +25,7 @@ class PipelineLogger:
     - verbose: All standard logs plus intermediate token lists and patterns
     
     The verbosity level is read from the PARSER_LOG_LEVEL environment variable.
-    Unknown values default to "standard" with a warning.
+    Unknown values default to "standard".
     """
     
     def __init__(self):
@@ -34,14 +36,26 @@ class PipelineLogger:
         # Validate level
         valid_levels = ("minimal", "standard", "verbose")
         if self._level not in valid_levels:
-            logger = logging.getLogger(__name__)
-            logger.warning(
-                f"Unknown PARSER_LOG_LEVEL='{raw_level}', defaulting to 'standard'. "
-                f"Valid values are: {', '.join(valid_levels)}"
+            # Log warning before overriding — needed for test assertion
+            logging.getLogger(__name__).warning(
+                "Unknown PARSER_LOG_LEVEL=%r, defaulting to 'standard'", raw_level
             )
             self._level = "standard"
         
+        # Configure logger for production (Huggingface/Docker)
         self._logger = logging.getLogger("fluxa.pipeline")
+        
+        # Only configure if not already configured
+        if not self._logger.handlers:
+            handler = logging.StreamHandler()  # stdout/stderr for Huggingface logs
+            formatter = logging.Formatter(
+                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            )
+            handler.setFormatter(formatter)
+            self._logger.addHandler(handler)
+            self._logger.setLevel(logging.INFO)  # Use INFO level for production visibility
+            self._logger.propagate = False  # Don't propagate to root logger
+        
         self._durations: deque[float] = deque(maxlen=100)
     
     def _emit(self, min_level: str, label: str, *fields: str) -> None:
@@ -59,7 +73,7 @@ class PipelineLogger:
         
         if current_idx >= min_idx:
             line = " | ".join([label] + list(fields))
-            self._logger.debug(line)
+            self._logger.info(line)  # Use INFO level for production visibility
     
     def log_raw_input(self, text: str) -> None:
         """

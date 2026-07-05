@@ -23,6 +23,17 @@ _REPLACEMENTS = {
     "nyimpen": "simpan",
     "nyokot": "ambil",
     "nutup": "tutup",
+    
+    # ── Common Whisper typos for action verbs ──────────────────────────
+    "bli": "beli",
+    "byar": "bayar",
+    "byyr": "bayar",
+    "byr": "bayar",
+    "trf": "transfer",
+    "trnsfer": "transfer",
+    "transferan": "transfer",
+    "krm": "kirim",
+    "mser": "beli",
 
     # ── Sundanese prepositions / connectors ────────────────────────────
     "ka ": "ke ",
@@ -33,6 +44,16 @@ _REPLACEMENTS = {
     "sareng ": "dan ",
     "teu ": "tidak ",
     "henteu ": "tidak ",
+    
+    # ── Common Whisper typos for prepositions ──────────────────────────
+    "untk": "untuk",
+    "utk": "untuk",
+    "bwat": "buat",
+    "bwt": "buat",
+    "krn": "karena",
+    "krna": "karena",
+    "gara": "karena",
+    "gara gara": "karena",
 
     # ── Sundanese day names ───────────────────────────────────────────
     "senen": "senin",
@@ -49,10 +70,30 @@ _REPLACEMENTS = {
     "kelmarin": "kemarin",
     "isukan": "besok",
     "isuk": "besok",
+    "isokan": "besok",  # Common Whisper typo
+    "esukan": "besok",
+    "esokan": "besok",
     "pageto": "besok",
     "ayeuna": "hari ini",
     "mangkukna": "kemarin lusa",
     "poe ": "hari ",
+
+    # ── Common Whisper STT typos for time expressions ─────────────────
+    "kemaren": "kemarin",
+    "kemariin": "kemarin",
+    "kemaarin": "kemarin",
+    "kmrn": "kemarin",
+    "kemrn": "kemarin",
+    "harini": "hari ini",
+    "hr ini": "hari ini",
+    "hari nie": "hari ini",
+    "hariini": "hari ini",
+    "skrg": "sekarang",
+    "skrng": "sekarang",
+    "skg": "sekarang",
+    "bsok": "besok",
+    "besook": "besok",
+    "bsk": "besok",
 
     # ── Sundanese time expressions ────────────────────────────────────
     "isuk-isuk": "pagi",

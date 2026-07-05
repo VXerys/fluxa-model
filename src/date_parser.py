@@ -58,19 +58,27 @@ _DAY_NAMES: dict[str, int] = {
 
 _YESTERDAY_WORDS: set[str] = {
     "kemarin", "kemaren", "kamari", "kemari", "kelmarin",
+    # Whisper STT variants
+    "kemaren", "kemariin", "kemaarin", "kmrn", "kemrn",
 }
 
 _DAY_BEFORE_YESTERDAY_PHRASES: set[str] = {
     "kemarin lusa", "kemaren lusa", "lusa kemarin", "lusa kemaren",
-    "mangkukna",
+    "mangkukna", "kemarin dulu", "kemaren dulu",
 }
 
 _TODAY_WORDS: set[str] = {
     "hari ini", "ayeuna", "sekarang",
+    # Whisper STT variants
+    "hr ini", "harini", "skrg", "skrng", "skg",
+    "hari nie", "hariini",
 }
 
 _TOMORROW_WORDS: set[str] = {
     "besok", "isukan", "esok",
+    # Whisper STT variants (common Whisper errors)
+    "isokan", "isok", "besok", "bsok", "besook", "bsk",
+    "esokan", "esukan",
 }
 
 _DAY_AFTER_TOMORROW_PHRASES: set[str] = {

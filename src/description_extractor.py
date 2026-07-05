@@ -14,8 +14,17 @@ from __future__ import annotations
 
 
 # Context prepositions that introduce transaction purpose/reason.
+# Including common Whisper STT typos and variants
 _CONTEXT_PREPOSITIONS: frozenset[str] = frozenset({
-    "buat", "untuk", "karena", "keur", "kanggo"
+    # Standard Indonesian
+    "buat", "untuk", "karena", "gara", "gara-gara", 
+    "soalnya", "sebab", "lantaran", "dengan",
+    # Sundanese
+    "keur", "kanggo", "alatan", "margi",
+    # Common STT variants/typos
+    "bwat", "untk", "utk", "krn", "krna",
+    # Colloquial
+    "bwt", "tuk", "wat", "bt",
 })
 
 
@@ -34,6 +43,9 @@ def extract_description(cleaned_text: str) -> str:
 
     # Tokenize the cleaned text
     tokens = cleaned_text.lower().split()
+    
+    if not tokens:
+        return ""
 
     # Scan for the first context preposition
     for i, token in enumerate(tokens):
@@ -55,5 +67,6 @@ def extract_description(cleaned_text: str) -> str:
                 # No space found, return up to 200 chars
                 return truncated
 
-    # No preposition found
+    # No preposition found - return empty string
+    # (fallback will be handled in inference_pipeline)
     return ""

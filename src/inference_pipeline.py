@@ -24,7 +24,6 @@ from typing import Any, Optional
 
 from src.amount_parser import parse_amount
 from src.date_parser import parse_date
-from src.description_extractor import extract_description
 from src.text_normalizer import normalize_text
 from src.title_extractor import extract_title
 from src.pipeline_logger import pipeline_logger
@@ -177,7 +176,11 @@ def infer_transaction(
     # Step 3: Title + Description — consume amount-cleaned text
     t0 = time.perf_counter()
     local_title = extract_title(text_after_amount)
-    local_desc = extract_description(text_after_amount)
+    
+    # Description = full normalized transcript (clean version without typos)
+    # This provides context about the full transaction in clean Indonesian
+    local_desc = normalized if normalized else None
+    
     pipeline_logger.log_after_title_desc(local_title, local_desc, (time.perf_counter() - t0) * 1000)
 
     # Step 4: Classification
