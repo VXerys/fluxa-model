@@ -127,6 +127,7 @@ _REPLACEMENTS = {
     # ── Common Whisper STT misheard Sundanese ─────────────────────────
     "maser": "beli",
     "maser rasi": "nasi",
+    "mesen": "beli",   # Whisper mishear of "meser" / "mesen" (order/buy)
     "naon": "apa",
     "teh": "",
     "mah": "",

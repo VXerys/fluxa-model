@@ -73,6 +73,13 @@ _NOISE_WORDS: frozenset[str] = frozenset({
     "senin", "senen", "selasa", "salasa", "rabu", "rebo",
     "kamis", "kemis", "jumat", "jumaah", "sabtu", "saptu",
     "minggu", "ahad", "yang",
+    # Date prefix words
+    "tanggal", "tgl",
+    # Month names
+    "januari", "jan", "februari", "feb", "maret", "mar",
+    "april", "apr", "mei", "juni", "jun", "juli", "jul",
+    "agustus", "agu", "agus", "september", "sep", "sept",
+    "oktober", "okt", "november", "nov", "desember", "des",
     # Time of day
     "pagi", "siang", "sore", "malam", "peuting", "wengi", "beurang",
     # Common Sundanese particles
